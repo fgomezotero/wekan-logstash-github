@@ -11,7 +11,8 @@
 # "archivedAt": "2017-02-19T02:13:24.269Z", "createdAt": "2017-02-19T02:13:24.269Z", "lastModification":
 # "2017-02-19T03:12:13.740Z", "list": "Done", "dailyEvents": 5, "board": "Test", "isArchived": true, ,
 # "duedAt": "2017-02-19T02:13:24.269Z", "swimlaneTitle": "Swinline Title", "customfieldName1": "value",
-# "customfieldName2": "value", "assignees": "fmonthel"}
+# "customfieldName2": "value", "assignees": "fmonthel", "title": "Card title", "boardId": "eJPAgty3guECZf4hs",
+# "cardUrl": "http://localhost/b/xxQ4HBqsmCuP5mYkb/semanal-te/WufsAmiKmmiSmXr9m"}
 
 
 import os
@@ -25,6 +26,7 @@ mongo_password = os.getenv('MONGODB_PWD', '')
 mongo_server = os.getenv('MONGODB_HOST', 'localhost')
 mongo_port = os.getenv('MONGODB_PORT', '27017')
 mongo_database = os.getenv('MONGODB_DB', 'wekan')
+baseURL = os.getenv('BASEURL', 'http://localhost')
 time_start = datetime.datetime.now()
 date_start = datetime.datetime.today().date()
 
@@ -53,7 +55,6 @@ def getcustomfieldnamevalue(customfieldsref, customfield):
 
 # Get list of boards that will be in whitelist
 def getwhitelistboards():
-    lines = list()
     text_file = open(os.path.dirname(os.path.abspath(__file__)) + "/white-list-boards.txt", "r")
     lines = text_file.read().split('\n')
     text_file.close()
@@ -78,8 +79,8 @@ def getstorypoint(title):
 def getcardsdata():
     # create connection string depending on whether mongo database accepts username and password or not
     conn_str = "mongodb://" + mongo_user + ":" + mongo_password + "@" + mongo_server + "/" + mongo_database \
-                if mongo_user != '' else \
-                "mongodb://" + mongo_server + "/" + mongo_database
+        if mongo_user != '' else \
+        "mongodb://" + mongo_server + "/" + mongo_database
     mongo = MongoClient(conn_str)
     db = mongo[mongo_database]
     users = db['users']
@@ -97,7 +98,7 @@ def getcardsdata():
     # Get cards data
     data = dict()
     # select cards for boards in whitelist file
-    for card in cards.find( { 'boardId': { '$in': whitelistboards } } ):
+    for card in cards.find({'boardId': {'$in': whitelistboards}}):
 
         # Create index on id of the card
         data[card["_id"]] = dict()
@@ -167,11 +168,11 @@ def getcardsdata():
             data[card["_id"]]['board'] = tmp_board['title']
             data[card["_id"]]["boardId"] = tmp_board['_id']
             # Public board or in whitelist => get title of cards ?
-            #if tmp_board["permission"] == 'public' or tmp_board["_id"] in whitelistboards:
-                # Get title data
+            # if tmp_board["permission"] == 'public' or tmp_board["_id"] in whitelistboards:
+            # Get title data
             data[card["_id"]]['title'] = card["title"]
-            #else:
-                # Get title data null
+            # else:
+            # Get title data null
             #    data[card["_id"]]['title'] = ""
             # Get Labels name
             data[card["_id"]]["labels"] = list()
@@ -186,6 +187,9 @@ def getcardsdata():
                                 data[card["_id"]]["labels"].append(label["name"])
             if "labelIds" not in card or len(card["labelIds"]) == 0:
                 data[card["_id"]]['labels'].append('No label')
+            # add card URL to dict
+            data[card["_id"]]["cardUrl"] = baseURL + "/b/" + card["boardId"] + '/' + tmp_board[
+                'title'].lower().replace(' ', '-') + '/' + card["_id"]
         else:
             data[card["_id"]]['board'] = 'Board not found'
             # Get title data null
