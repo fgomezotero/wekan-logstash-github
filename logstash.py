@@ -31,15 +31,23 @@ time_start = datetime.datetime.now()
 date_start = datetime.datetime.today().date()
 
 
-# Main function
 def main():
+    """Main function
+
+    :return:
+    """
     cards = getcardsdata()
     for id in cards:
         print(json.dumps(cards[id], ensure_ascii=False, sort_keys=True))
 
 
-# Function that will get a dict for a customField with name and value keys
 def getcustomfieldnamevalue(customfieldsref, customfield):
+    """Function that will get a dict for a customField with name and value keys
+
+    :param customfieldsref: customfields collection
+    :param customfield: specific customfield
+    :return: dict with name and value of the specific customfield provided by parameter
+    """
     result = dict()
     cursor = customfieldsref.find({"_id": customfield['_id']})
     for document in cursor:
@@ -53,16 +61,23 @@ def getcustomfieldnamevalue(customfieldsref, customfield):
     return result
 
 
-# Get list of boards that will be in whitelist
 def getwhitelistboards():
+    """Get list of boards that will be in whitelist
+
+    :return: A list of boards ids
+    """
     text_file = open(os.path.dirname(os.path.abspath(__file__)) + "/white-list-boards.txt", "r")
     lines = text_file.read().split('\n')
     text_file.close()
     return lines
 
 
-# Function that will get in the title the first characters as storypoints
 def getstorypoint(title):
+    """Function that will get in the title the first characters as storypoints
+
+    :param title: Card title
+    :return:
+    """
     tmp = ""
     for l in title:
         if l in ['.', ',', ' ', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0']:
@@ -75,8 +90,11 @@ def getstorypoint(title):
         return 0
 
 
-# Function that will populate dict for logstash
 def getcardsdata():
+    """Function that will populate dict for logstash
+
+    :return: A dict with the collections of all cards
+    """
     # create connection string depending on whether mongo database accepts username and password or not
     conn_str = "mongodb://" + mongo_user + ":" + mongo_password + "@" + mongo_server + "/" + mongo_database \
         if mongo_user != '' else \
@@ -228,7 +246,6 @@ def getcardsdata():
         # Fornat the lastModification date now
         data[card["_id"]]['lastModification'] = datetime.datetime.strftime(data[card["_id"]]['lastModification'],
                                                                            "%Y-%m-%dT%H:%M:%S.000Z")
-
     # End, time to return dict :)
     return data
 
