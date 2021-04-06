@@ -20,10 +20,11 @@ import datetime
 from pymongo import MongoClient
 
 # Parameters
-mongo_user = 'admin'
-mongo_password = 'admin123'
-mongo_server = 'localhost'
-mongo_port = '27017'
+mongo_user = os.getenv('MONGODB_USER', '')
+mongo_password = os.getenv('MONGODB_PWD', '')
+mongo_server = os.getenv('MONGODB_HOST', 'localhost')
+mongo_port = os.getenv('MONGODB_PORT', '27017')
+mongo_database = os.getenv('MONGODB_DB', 'wekan')
 time_start = datetime.datetime.now()
 date_start = datetime.datetime.today().date()
 
@@ -32,7 +33,7 @@ date_start = datetime.datetime.today().date()
 def main():
     cards = getcardsdata()
     for id in cards:
-        print(json.dumps(cards[id]))
+        print(json.dumps(cards[id], ensure_ascii=False, sort_keys=True))
 
 
 # Function that will get a dict for a customField with name and value keys
@@ -75,9 +76,12 @@ def getstorypoint(title):
 
 # Function that will populate dict for logstash
 def getcardsdata():
-    # BDD
-    mongo = MongoClient('mongodb://' + mongo_user + ':' + mongo_password + '@' + mongo_server + ':' + mongo_port + '/')
-    db = mongo['admin']
+    # create connection string depending on whether mongo database accepts username and password or not
+    conn_str = "mongodb://" + mongo_user + ":" + mongo_password + "@" + mongo_server + "/" + mongo_database \
+                if mongo_user != '' else \
+                "mongodb://" + mongo_server + "/" + mongo_database
+    mongo = MongoClient(conn_str)
+    db = mongo[mongo_database]
     users = db['users']
     boards = db['boards']
     lists = db['lists']
@@ -92,7 +96,8 @@ def getcardsdata():
 
     # Get cards data
     data = dict()
-    for card in cards.find():
+    # select cards for boards in whitelist file
+    for card in cards.find( { 'boardId': { '$in': whitelistboards } } ):
 
         # Create index on id of the card
         data[card["_id"]] = dict()
@@ -126,10 +131,10 @@ def getcardsdata():
         data[card["_id"]]['lastModification'] = card["dateLastActivity"]
 
         # Get number of comments data
-        data[card["_id"]]['nbComments'] = card_comments.count({"cardId": card["_id"]})
+        data[card["_id"]]['nbComments'] = card_comments.count_documents({"cardId": card["_id"]})
 
         # Get creator name
-        if users.find({"_id": card["userId"]}).count() == 1 and 'username' in users.find_one(
+        if users.count_documents({"_id": card["userId"]}) == 1 and 'username' in users.find_one(
                 {"_id": card["userId"]}).keys():
             data[card["_id"]]['createdBy'] = users.find_one({"_id": card["userId"]})['username']
         else:
@@ -150,23 +155,23 @@ def getcardsdata():
                 data[card["_id"]][cf['name']] = cf['value']
 
         # Get list name
-        if lists.find({"_id": card["listId"]}).count() == 1:
+        if lists.count_documents({"_id": card["listId"]}) == 1:
             data[card["_id"]]['list'] = lists.find_one({"_id": card["listId"]})['title']
         else:
             data[card["_id"]]['list'] = 'List not found'
 
         # Get board data for board name and card title and label name
-        if boards.find({"_id": card["boardId"]}).count() == 1:
+        if boards.count_documents({"_id": card["boardId"]}) == 1:
             # Get board data
             tmp_board = boards.find_one({"_id": card["boardId"]})
             data[card["_id"]]['board'] = tmp_board['title']
             # Public board or in whitelist => get title of cards ?
-            if tmp_board["permission"] == 'public' or tmp_board["_id"] in whitelistboards:
+            #if tmp_board["permission"] == 'public' or tmp_board["_id"] in whitelistboards:
                 # Get title data
-                data[card["_id"]]['title'] = card["title"]
-            else:
+            data[card["_id"]]['title'] = card["title"]
+            #else:
                 # Get title data null
-                data[card["_id"]]['title'] = ""
+            #    data[card["_id"]]['title'] = ""
             # Get Labels name
             data[card["_id"]]["labels"] = list()
             if "labelIds" in card:
@@ -200,7 +205,7 @@ def getcardsdata():
         data[card["_id"]]["assignees"] = list()
         if "assignees" in card:
             for member in card["assignees"]:
-                if users.find({"_id": member}).count() == 1 and 'username' in users.find_one({"_id": member}).keys():
+                if users.count_documents({"_id": member}) == 1 and 'username' in users.find_one({"_id": member}).keys():
                     data[card["_id"]]['assignees'].append(users.find_one({"_id": member})['username'])
                 else:
                     data[card["_id"]]['assignees'].append('User not found')
