@@ -7,16 +7,18 @@
 # Author: Florent MONTHEL (fmonthel@flox-arts.net)
 #
 # {"storyPoint": 2.0, "nbComments": 1, "createdBy": "fmonthel", "labels": ["vert", "jaune"], 
-# "members": ["fmonthel", "Olivier"], "id": "7WfoXMKnmbtaEwTnn",
+# "members": ["fmonthel", "Olivier"], "id": "7WfoXMKnmbtaEwTnn", "boardSlug": "test",
 # "archivedAt": "2017-02-19T02:13:24.269Z", "createdAt": "2017-02-19T02:13:24.269Z", "lastModification":
-# "2017-02-19T03:12:13.740Z", "list": "Done", "dailyEvents": 5, "board": "Test", "isArchived": true, ,
+# "2017-02-19T03:12:13.740Z", "list": "Done", "dailyEvents": 5, "board": "Test", "isArchived": true,
 # "duedAt": "2017-02-19T02:13:24.269Z", "swimlaneTitle": "Swinline Title", "customfieldName1": "value",
-# "customfieldName2": "value", "assignees": "fmonthel"}
+# "customfieldName2": "value", "assignees": "fmonthel", "title": "Card title", "boardId": "eJPAgty3guECZf4hs",
+# "cardUrl": "http://localhost/b/xxQ4HBqsmCuP5mYkb/semanal-te/WufsAmiKmmiSmXr9m"}
 
 
-import os
-import json
 import datetime
+import json
+import os
+import requests
 from pymongo import MongoClient
 
 # Parameters
@@ -25,19 +27,45 @@ mongo_password = os.getenv('MONGODB_PWD', '')
 mongo_server = os.getenv('MONGODB_HOST', 'localhost')
 mongo_port = os.getenv('MONGODB_PORT', '27017')
 mongo_database = os.getenv('MONGODB_DB', 'wekan')
+baseURL = os.getenv('BASEURL', 'http://localhost')
+logstashEndpoint = os.getenv('LOGSTASH_SERVER', 'http://localhost:5044')
 time_start = datetime.datetime.now()
 date_start = datetime.datetime.today().date()
 
 
-# Main function
+def calllogstashpipeline(card):
+    """Make a request to logstash endpoint services
+
+    :param card: A single card
+    :return: Response status code
+    """
+    r = requests.post(logstashEndpoint, data=card, headers={'Content-type': 'application/json', 'Accept': 'text/plain'})
+    return r.status_code
+
+
 def main():
+    """Main function that iterate over all the cards and makes the request to the logstash endpoint
+
+    :return:
+    """
     cards = getcardsdata()
-    for id in cards:
-        print(json.dumps(cards[id], ensure_ascii=False, sort_keys=True))
+    try:
+        for id in cards:
+            # print(json.dumps(cards[id], ensure_ascii=False, sort_keys=True))
+            calllogstashpipeline(json.dumps(cards[id], ensure_ascii=True, sort_keys=True))
+    except requests.exceptions.RequestException as e:
+        print(e)
+    finally:
+        print("Programa Finalizado, {} documentos procesados".format(len(cards)))
 
 
-# Function that will get a dict for a customField with name and value keys
 def getcustomfieldnamevalue(customfieldsref, customfield):
+    """Function that will get a dict for a customField with name and value keys
+
+    :param customfieldsref: customfields collection
+    :param customfield: specific customfield
+    :return: dict with name and value of the specific customfield provided by parameter
+    """
     result = dict()
     cursor = customfieldsref.find({"_id": customfield['_id']})
     for document in cursor:
@@ -51,17 +79,23 @@ def getcustomfieldnamevalue(customfieldsref, customfield):
     return result
 
 
-# Get list of boards that will be in whitelist
 def getwhitelistboards():
-    lines = list()
+    """Get list of boards that will be in whitelist
+
+    :return: A list of boards ids
+    """
     text_file = open(os.path.dirname(os.path.abspath(__file__)) + "/white-list-boards.txt", "r")
     lines = text_file.read().split('\n')
     text_file.close()
     return lines
 
 
-# Function that will get in the title the first characters as storypoints
 def getstorypoint(title):
+    """Function that will get in the title the first characters as storypoints
+
+    :param title: Card title
+    :return:
+    """
     tmp = ""
     for l in title:
         if l in ['.', ',', ' ', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0']:
@@ -74,12 +108,15 @@ def getstorypoint(title):
         return 0
 
 
-# Function that will populate dict for logstash
 def getcardsdata():
+    """Function that will populate dict for logstash
+
+    :return: A dict with the collections of all cards
+    """
     # create connection string depending on whether mongo database accepts username and password or not
     conn_str = "mongodb://" + mongo_user + ":" + mongo_password + "@" + mongo_server + "/" + mongo_database \
-                if mongo_user != '' else \
-                "mongodb://" + mongo_server + "/" + mongo_database
+        if mongo_user != '' else \
+        "mongodb://" + mongo_server + "/" + mongo_database
     mongo = MongoClient(conn_str)
     db = mongo[mongo_database]
     users = db['users']
@@ -97,7 +134,7 @@ def getcardsdata():
     # Get cards data
     data = dict()
     # select cards for boards in whitelist file
-    for card in cards.find( { 'boardId': { '$in': whitelistboards } } ):
+    for card in cards.find({'boardId': {'$in': whitelistboards}}):
 
         # Create index on id of the card
         data[card["_id"]] = dict()
@@ -165,12 +202,14 @@ def getcardsdata():
             # Get board data
             tmp_board = boards.find_one({"_id": card["boardId"]})
             data[card["_id"]]['board'] = tmp_board['title']
+            data[card["_id"]]['boardSlug'] = tmp_board['title'].lower().replace(' ', '-')
+            data[card["_id"]]["boardId"] = tmp_board['_id']
             # Public board or in whitelist => get title of cards ?
-            #if tmp_board["permission"] == 'public' or tmp_board["_id"] in whitelistboards:
-                # Get title data
+            # if tmp_board["permission"] == 'public' or tmp_board["_id"] in whitelistboards:
+            # Get title data
             data[card["_id"]]['title'] = card["title"]
-            #else:
-                # Get title data null
+            # else:
+            # Get title data null
             #    data[card["_id"]]['title'] = ""
             # Get Labels name
             data[card["_id"]]["labels"] = list()
@@ -185,6 +224,9 @@ def getcardsdata():
                                 data[card["_id"]]["labels"].append(label["name"])
             if "labelIds" not in card or len(card["labelIds"]) == 0:
                 data[card["_id"]]['labels'].append('No label')
+            # add card URL to dict
+            data[card["_id"]]["cardUrl"] = baseURL + "/b/" + card["boardId"] + '/' + tmp_board[
+                'title'].lower().replace(' ', '-') + '/' + card["_id"]
         else:
             data[card["_id"]]['board'] = 'Board not found'
             # Get title data null
@@ -223,7 +265,6 @@ def getcardsdata():
         # Fornat the lastModification date now
         data[card["_id"]]['lastModification'] = datetime.datetime.strftime(data[card["_id"]]['lastModification'],
                                                                            "%Y-%m-%dT%H:%M:%S.000Z")
-
     # End, time to return dict :)
     return data
 
