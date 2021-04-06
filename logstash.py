@@ -7,17 +7,18 @@
 # Author: Florent MONTHEL (fmonthel@flox-arts.net)
 #
 # {"storyPoint": 2.0, "nbComments": 1, "createdBy": "fmonthel", "labels": ["vert", "jaune"], 
-# "members": ["fmonthel", "Olivier"], "id": "7WfoXMKnmbtaEwTnn",
+# "members": ["fmonthel", "Olivier"], "id": "7WfoXMKnmbtaEwTnn", "boardSlug": "test",
 # "archivedAt": "2017-02-19T02:13:24.269Z", "createdAt": "2017-02-19T02:13:24.269Z", "lastModification":
-# "2017-02-19T03:12:13.740Z", "list": "Done", "dailyEvents": 5, "board": "Test", "isArchived": true, ,
+# "2017-02-19T03:12:13.740Z", "list": "Done", "dailyEvents": 5, "board": "Test", "isArchived": true,
 # "duedAt": "2017-02-19T02:13:24.269Z", "swimlaneTitle": "Swinline Title", "customfieldName1": "value",
 # "customfieldName2": "value", "assignees": "fmonthel", "title": "Card title", "boardId": "eJPAgty3guECZf4hs",
 # "cardUrl": "http://localhost/b/xxQ4HBqsmCuP5mYkb/semanal-te/WufsAmiKmmiSmXr9m"}
 
 
-import os
-import json
 import datetime
+import json
+import os
+import requests
 from pymongo import MongoClient
 
 # Parameters
@@ -27,18 +28,35 @@ mongo_server = os.getenv('MONGODB_HOST', 'localhost')
 mongo_port = os.getenv('MONGODB_PORT', '27017')
 mongo_database = os.getenv('MONGODB_DB', 'wekan')
 baseURL = os.getenv('BASEURL', 'http://localhost')
+logstashEndpoint = os.getenv('LOGSTASH_SERVER', 'http://localhost:5044')
 time_start = datetime.datetime.now()
 date_start = datetime.datetime.today().date()
 
 
+def calllogstashpipeline(card):
+    """Make a request to logstash endpoint services
+
+    :param card: A single card
+    :return: Response status code
+    """
+    r = requests.post(logstashEndpoint, data=card, headers={'Content-type': 'application/json', 'Accept': 'text/plain'})
+    return r.status_code
+
+
 def main():
-    """Main function
+    """Main function that iterate over all the cards and makes the request to the logstash endpoint
 
     :return:
     """
     cards = getcardsdata()
-    for id in cards:
-        print(json.dumps(cards[id], ensure_ascii=False, sort_keys=True))
+    try:
+        for id in cards:
+            # print(json.dumps(cards[id], ensure_ascii=False, sort_keys=True))
+            calllogstashpipeline(json.dumps(cards[id], ensure_ascii=True, sort_keys=True))
+    except requests.exceptions.RequestException as e:
+        print(e)
+    finally:
+        print("Programa Finalizado, {} documentos procesados".format(len(cards)))
 
 
 def getcustomfieldnamevalue(customfieldsref, customfield):
@@ -184,6 +202,7 @@ def getcardsdata():
             # Get board data
             tmp_board = boards.find_one({"_id": card["boardId"]})
             data[card["_id"]]['board'] = tmp_board['title']
+            data[card["_id"]]['boardSlug'] = tmp_board['title'].lower().replace(' ', '-')
             data[card["_id"]]["boardId"] = tmp_board['_id']
             # Public board or in whitelist => get title of cards ?
             # if tmp_board["permission"] == 'public' or tmp_board["_id"] in whitelistboards:
