@@ -165,6 +165,7 @@ def getcardsdata():
             # Get board data
             tmp_board = boards.find_one({"_id": card["boardId"]})
             data[card["_id"]]['board'] = tmp_board['title']
+            data[card["_id"]]["boardId"] = tmp_board['_id']
             # Public board or in whitelist => get title of cards ?
             #if tmp_board["permission"] == 'public' or tmp_board["_id"] in whitelistboards:
                 # Get title data
