@@ -96,7 +96,8 @@ def getcardsdata():
 
     # Get cards data
     data = dict()
-    for card in cards.find():
+    # select cards for boards in whitelist file
+    for card in cards.find( { 'boardId': { '$in': whitelistboards } } ):
 
         # Create index on id of the card
         data[card["_id"]] = dict()
@@ -165,12 +166,12 @@ def getcardsdata():
             tmp_board = boards.find_one({"_id": card["boardId"]})
             data[card["_id"]]['board'] = tmp_board['title']
             # Public board or in whitelist => get title of cards ?
-            if tmp_board["permission"] == 'public' or tmp_board["_id"] in whitelistboards:
+            #if tmp_board["permission"] == 'public' or tmp_board["_id"] in whitelistboards:
                 # Get title data
-                data[card["_id"]]['title'] = card["title"]
-            else:
+            data[card["_id"]]['title'] = card["title"]
+            #else:
                 # Get title data null
-                data[card["_id"]]['title'] = ""
+            #    data[card["_id"]]['title'] = ""
             # Get Labels name
             data[card["_id"]]["labels"] = list()
             if "labelIds" in card:
