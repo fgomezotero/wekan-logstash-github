@@ -160,7 +160,7 @@ def getcardsdata():
 
         # Get dueAt date data
         if 'dueAt' not in card or card["dueAt"] is None:
-            data[card["_id"]]['dueAt'] = 'None'
+            pass
         else:
             data[card["_id"]]['dueAt'] = datetime.datetime.strftime(card["dueAt"], "%Y-%m-%dT%H:%M:%S.000Z")
 
