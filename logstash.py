@@ -159,9 +159,7 @@ def getcardsdata():
         data[card["_id"]]['createdAt'] = datetime.datetime.strftime(card["createdAt"], "%Y-%m-%dT%H:%M:%S.000Z")
 
         # Get dueAt date data
-        if 'dueAt' not in card or card["dueAt"] is None:
-            data[card["_id"]]['dueAt'] = 'None'
-        else:
+        if 'dueAt' in card:
             data[card["_id"]]['dueAt'] = datetime.datetime.strftime(card["dueAt"], "%Y-%m-%dT%H:%M:%S.000Z")
 
         # Get last activity date data (will be updated after)
