@@ -102,7 +102,7 @@ input {
 
 output {
    elasticsearch {
-       index => "wekan-daily-full-%{[boardSlug]}"
+       index => "wekan-daily-full-%{[boardSlug]}-%{[boardId]}"
        document_id => "%{[id]}-%{+YYYY.MM.dd}"
        hosts => ["localhost:9200"]
    } 
@@ -111,11 +111,11 @@ output {
 !> Se utiliza el plugins de entrada :link: [HTTP](https://www.elastic.co/guide/en/logstash/current/plugins-inputs-http.html).
 Lo que permite a logstash recibir eventos sobre http(s) y a las aplicaciones poder enviar una petición http(s) al mismo.
 
-:rotating_light: &nbsp; La definición del índice:  `index => "wekan-daily-full-%{[boardSlug]}"` crea índices diferentes para cada
+:rotating_light: &nbsp; La definición del índice:  `index => "wekan-daily-full-%{[boardSlug]}-%{[boardId]}"` crea índices diferentes para cada
 tablero declarado en el fichero _white-list-board.txt_, mientras que `document_id => "%{[id]}-%{+YYYY.MM.dd}"` crea un documento
 por día para las tarjetas que pertenecen a los tableros almacenados en el fichero _white-list-boards.txt_. </br>
 
-:exclamation: Por tanto, si el script es ejecutado más de una vez al día, actualizará los documentos creados pero, en ningún caso creará nuevos documentos a no ser que se añadan 
+:exclamation: Por tanto, si el script es ejecutado más de una vez al día, actualizará los documentos creados, pero en ningún caso creará nuevos documentos a no ser que se añadan 
 nuevas tarjetas a los tableros declarados.
 
 
