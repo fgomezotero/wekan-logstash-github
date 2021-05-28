@@ -20,6 +20,7 @@ import json
 import os
 import requests
 from pymongo import MongoClient
+from slugify import slugify
 
 # Parameters
 mongo_user = os.getenv('MONGODB_USER', '')
@@ -202,7 +203,9 @@ def getcardsdata():
             # Get board data
             tmp_board = boards.find_one({"_id": card["boardId"]})
             data[card["_id"]]['board'] = tmp_board['title']
-            data[card["_id"]]['boardSlug'] = tmp_board['title'].lower().replace(' ', '-')
+            # add boardSlug field to avoid error name in index creation action at logstash
+            data[card["_id"]]['boardSlug'] = slugify(tmp_board['title'])
+
             data[card["_id"]]["boardId"] = tmp_board['_id']
             # Public board or in whitelist => get title of cards ?
             # if tmp_board["permission"] == 'public' or tmp_board["_id"] in whitelistboards:
