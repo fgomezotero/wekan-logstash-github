@@ -6,13 +6,17 @@
 #
 # Author: Florent MONTHEL (fmonthel@flox-arts.net)
 #
-# {"storyPoint": 2.0, "nbComments": 1, "createdBy": "fmonthel", "labels": ["vert", "jaune"], 
+# {
+# "storyPoint": 2.0, "nbComments": 1, "createdBy": "fmonthel", "labels": ["vert", "jaune"],
 # "members": ["fmonthel", "Olivier"], "id": "7WfoXMKnmbtaEwTnn", "boardSlug": "test",
+# "description": "A subtask description", "startAt": "2021-06-07T20:47:00.000Z", "endAt": "2021-06-09T20:47:00.000Z",
+# "requestedBy": "LR", "assignedBy": "MM", "receivedAt": "2021-06-07T20:36:00.000Z",
 # "archivedAt": "2017-02-19T02:13:24.269Z", "createdAt": "2017-02-19T02:13:24.269Z", "lastModification":
 # "2017-02-19T03:12:13.740Z", "list": "Done", "dailyEvents": 5, "board": "Test", "isArchived": true,
-# "duedAt": "2017-02-19T02:13:24.269Z", "swimlaneTitle": "Swinline Title", "customfieldName1": "value",
+# "dueAt": "2017-02-19T02:13:24.269Z", "swimlaneTitle": "Swinline Title", "customfieldName1": "value",
 # "customfieldName2": "value", "assignees": "fmonthel", "title": "Card title", "boardId": "eJPAgty3guECZf4hs",
-# "cardUrl": "http://localhost/b/xxQ4HBqsmCuP5mYkb/semanal-te/WufsAmiKmmiSmXr9m"}
+# "cardUrl": "http://localhost/b/xxQ4HBqsmCuP5mYkb/semanal-te/WufsAmiKmmiSmXr9m"
+# }
 
 
 import datetime
@@ -52,8 +56,8 @@ def main():
     cards = getcardsdata()
     try:
         for id in cards:
-            # print(json.dumps(cards[id], ensure_ascii=False, sort_keys=True))
-            calllogstashpipeline(json.dumps(cards[id], ensure_ascii=True, sort_keys=True))
+            print(json.dumps(cards[id], ensure_ascii=False, sort_keys=True))
+            # calllogstashpipeline(json.dumps(cards[id], ensure_ascii=True, sort_keys=True))
     except requests.exceptions.RequestException as e:
         print(e)
     finally:
@@ -160,10 +164,20 @@ def getcardsdata():
         data[card["_id"]]['createdAt'] = datetime.datetime.strftime(card["createdAt"], "%Y-%m-%dT%H:%M:%S.000Z")
 
         # Get dueAt date data
-        if 'dueAt' not in card or card["dueAt"] is None:
-            pass
-        else:
+        if 'dueAt' in card and card["dueAt"] is not None:
             data[card["_id"]]['dueAt'] = datetime.datetime.strftime(card["dueAt"], "%Y-%m-%dT%H:%M:%S.000Z")
+
+        # Get receivedAt data card
+        if 'receivedAt' in card and card["receivedAt"] is not None:
+            data[card["_id"]]['receivedAt'] = datetime.datetime.strftime(card["receivedAt"], "%Y-%m-%dT%H:%M:%S.000Z")
+
+        # Get startAt data card
+        if 'startAt' in card and card["startAt"] is not None:
+            data[card["_id"]]['startAt'] = datetime.datetime.strftime(card["startAt"], "%Y-%m-%dT%H:%M:%S.000Z")
+
+        # Get endAt data card
+        if 'endAt' in card and card["endAt"] is not None:
+            data[card["_id"]]['endAt'] = datetime.datetime.strftime(card["endAt"], "%Y-%m-%dT%H:%M:%S.000Z")
 
         # Get last activity date data (will be updated after)
         data[card["_id"]]['lastModification'] = card["dateLastActivity"]
@@ -207,14 +221,19 @@ def getcardsdata():
             data[card["_id"]]['boardSlug'] = slugify(tmp_board['title'])
 
             data[card["_id"]]["boardId"] = tmp_board['_id']
-            # Public board or in whitelist => get title of cards ?
-            # if tmp_board["permission"] == 'public' or tmp_board["_id"] in whitelistboards:
+
             # Get title data
             data[card["_id"]]['title'] = card["title"]
-            # else:
-            # Get title data null
-            #    data[card["_id"]]['title'] = ""
-            # Get Labels name
+            # Get card description
+            if 'description' in card:
+                data[card["_id"]]['description'] = card["description"]
+            # Get assignedBy card field
+            if 'assignedBy' in card and card['assignedBy'] != '':
+                data[card['_id']]['assignedBy'] = card['assignedBy']
+            # Get requestedBy card field
+            if 'requestedBy' in card and card['requestedBy'] != '':
+                data[card['_id']]['requestedBy'] = card['requestedBy']
+
             data[card["_id"]]["labels"] = list()
             if "labelIds" in card:
                 for labelId in card["labelIds"]:
