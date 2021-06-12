@@ -56,8 +56,8 @@ def main():
     cards = getcardsdata()
     try:
         for id in cards:
-            print(json.dumps(cards[id], ensure_ascii=False, sort_keys=True))
-            # calllogstashpipeline(json.dumps(cards[id], ensure_ascii=True, sort_keys=True))
+            # print(json.dumps(cards[id], ensure_ascii=False, sort_keys=True))
+            calllogstashpipeline(json.dumps(cards[id], ensure_ascii=True, sort_keys=True))
     except requests.exceptions.RequestException as e:
         print(e)
     finally:
